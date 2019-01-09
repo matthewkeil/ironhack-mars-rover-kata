@@ -1,29 +1,20 @@
-const isNumber = require('util').isNumber;
-
 // Grid Object Goes Here
 // =====================
-class Environment {
-
-  objects = {
+const Environment = {
+  size: {
+    x: 10,
+    y: 10
+  },
+  objects: {
     rovers: [],
     obstacles: []
-  };
-
-  constructor(x_size, y_size) {
-    this.size.x = isNumber(x_size) ? x_size : 10;
-    this.size.y = isNumber(y_size) ? y_size : 10;
-  };
-
+  },
   validate(location) {
     if (!location) {
       throw new Error('must pass location to be validated');
     }
 
     const { x, y } = location;
-
-    if (!(isNumber(x) && isNumber(y))) {
-      throw new Error('location x and y properties must be numbers');
-    }
 
     if (x < 0 || x > (this.size.x - 1)) {
       throw new Error('x coordinate is out of bounds');
@@ -39,8 +30,7 @@ class Environment {
     }
  
     return true;
-  };
-
+  },
   addObject(object) {
     if (!object) {
       throw Error('What are ya adding...');
@@ -64,44 +54,43 @@ class Environment {
     } catch (err) {
       console.error(err);
     }
-  };
+  }
 };
 // =====================
 
 // Rover Object Goes Here
 // ======================
-class Rover {
-
-  get name() {
-    return `Rover #${this._number}`;
+function Rover(environment) { 
+  
+  if (!environment) {
+    throw new Error('No environment detected.  Wipe off the sensors, silly!!');
   }
+
+  try {
   
-  _directions = [ "N", "E", "S", "W" ];
+    this._number = this._environment.addObject(this);
   
-  _direction_index = 0;
-  
-  get direction() {
-    return this._directions[this._direction_index];
+    console.log(`landing zone detected!! ${this.name} initiating decent sequence\nspooky... ${this.name} heading ${this.direction} at located at\nx: ${this.location.x}, y: ${this.location.y}`);
+  } catch (err) {
+    console.error('An error was detected when attempting to land...\n', err);
+  }
+
+  this.name = () => {
+    return `Rover #${this._number}`;
   };
+
+  this._directions = [ "N", "E", "S", "W" ];
+
+  this._direction_index = 0;
+
+  this.direction = this._directions[this._direction_index];
   
-  location = {
+  this.location = {
     x: 0,
     y: 0
   };
 
-  constructor(environment) {
-
-    if (!environment) {
-      throw new Error('No environment detected.  Wipe off the sensors, silly!!');
-    }
-  
-    this._environment = environment;
-
-    this._number = this._environment.addObject(this);
-
-  };
-
-  turnLeft() {
+  this.turnLeft = () => {
 
     if (this.direction_index === 0) {
       this.direction_index = 3;
@@ -111,8 +100,8 @@ class Rover {
   
     console.log(`Rover #${this.number} turned left. Now facing ${this.directions[this.direction_index]}`);
   };
-  
-  turnRight() {
+
+  this.turnRight = () => {
 
     if (this.direction_index === 3) {
       this.direction_index = 0;
@@ -122,19 +111,18 @@ class Rover {
   
     console.log(`Rover #${this.number} turned right. Now facing ${this.directions[this.direction_index]}`);
   };
-  
-  _scan(location) {
+
+  this._scan = (location) => {
     try {
     
-      return this._environment.validate(location);
+      return environment.validate(location);
     
     } catch (err) { console.error(err); }
 
     return false;
   };
 
-
-  _moveTo(new_location) {
+  this._moveTo = (new_location) => {
     if (this._scan(new_location)) {
       this.location = {...new_location};
       console.log(`${this.name} moving to x:${this.location.x}, y: ${this.location.y}`);
@@ -145,7 +133,7 @@ class Rover {
     return false;
   };
 
-  moveForward() {
+  this.moveForward = () => {
     const new_location = {...this.location};
 
     switch(this.direction) {
@@ -166,7 +154,7 @@ class Rover {
     return this._moveTo(new_location);
   };
 
-  moveBackwards() {
+  this.moveBackwards = () => {
     const new_location = {...this.location};
 
     switch(this.direction) {
