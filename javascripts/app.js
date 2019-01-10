@@ -1,118 +1,142 @@
-// Grid Object Goes Here
-// =====================
-const Environment = {
+const environment = {
   size: {
     x: 10,
     y: 10
   },
-  objects: {
-    rovers: [],
-    obstacles: []
+  rovers: [],
+  obstacles: [],
+  isOccupied: (location) => {
+    let objects = [...environment.rovers, ...environment.obstacles];
+
+    let [occupant] = objects.filter((val, index) => {
+      if (location.x === val.x && location.y === val.y) {
+        return objects[index];
+      }
+    });
+
+    return occupant;
   },
-  validate(location) {
+  validate: (location) => {
     if (!location) {
       throw new Error('must pass location to be validated');
     }
 
     const { x, y } = location;
 
-    if (x < 0 || x > (this.size.x - 1)) {
+    if (x < 0 || x > (environment.size.x - 1)) {
       throw new Error('x coordinate is out of bounds');
     }
 
-    if (y < 0 || y > (this.size.y - 1)) {
+    if (y < 0 || y > (environment.size.y - 1)) {
       throw new Error('y coordinate is out of bounds');
     }
 
-    const occupant = this.is_occupied(location);
-    if (occupant) {
+    const occupant = environment.isOccupied(location);
+
+    if (!!occupant) {
       throw new Error(`that location is occupied by ${occupant.name}`);
     }
- 
+
     return true;
   },
-  addObject(object) {
+  landRover: (rover) => {
+    if (!(rover instanceof Rover)) {
+      throw new Error('we only handle Rover landings!!!');
+    }
+    
+    environment.validate(rover);
+    
+    return environment.rovers.push(rover);
+  },
+  addObstacle: (object) => {
     if (!object) {
       throw Error('What are ya adding...');
     }
 
-    if (!object.location && !isObject(object.location)) {
-      throw new Error('objects must have a location property')
+    if (!(!!object.location && !!object.location.x && !!object.location.y)) {
+      throw new Error('objects must have a valid location property')
     }
 
-    try {
-
-      if (object instanceof Rover && this.validate_location(object)) {
-        this.objects.rovers.push(object);
-        return (this.objects.rovers.length - 1);
-      }
-      
-      if (!!object.location.x && !!object.location.y && this.validate_location(object)) {
-        console.log(`Obstacle added at x: ${object.location.x}, y: ${object.location.y}`); 
-        return void this.obstacles.push(object);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+    environment.validate(object);
+    
+    environment.obstacles.push(object);
+    
+    console.log(`Obstacle added at x: ${object.location.x}, y: ${object.location.y}`);   
   }
 };
-// =====================
 
-// Rover Object Goes Here
-// ======================
-function Rover(environment) { 
+/** 
+ * Rover constructor function
+ * 
+ */
+class Rover {
+
+  constructor() {
+    this._directions = [ "N", "E", "S", "W" ];
+
+    this._direction_index = 0;
+    
+    this.location = {
+      x: 0,
+      y: 0
+    };
+    
+    this.travelog = [];
+
+    if (!environment) {
+      throw new Error('No environment detected.  Wipe off the sensors, silly!!');
+    }
   
-  if (!environment) {
-    throw new Error('No environment detected.  Wipe off the sensors, silly!!');
+    do {
+      try {
+        this._number = environment.landRover(this);
+        
+        console.log(`landing zone detected!!\n${this.name} initiating decent sequence\nspooky... ${this.name} facing ${this.direction}\nlocated at x: ${this.location.x}, y: ${this.location.y}`);
+        
+      } catch (err) {
+        console.error('An error was detected when attempting to land...\n trying another set of coordinates\n', err);
+
+        this.location = {
+          x: Math.floor(Math.random() * environment.size.x),
+          y: Math.floor(Math.random() * environment.size.y)
+        }
+
+        continue;
+      }
+
+    } while (false);
+
   }
 
-  try {
-  
-    this._number = this._environment.addObject(this);
-  
-    console.log(`landing zone detected!! ${this.name} initiating decent sequence\nspooky... ${this.name} heading ${this.direction} at located at\nx: ${this.location.x}, y: ${this.location.y}`);
-  } catch (err) {
-    console.error('An error was detected when attempting to land...\n', err);
-  }
-
-  this.name = () => {
+  get name() {
     return `Rover #${this._number}`;
-  };
+  }
 
-  this._directions = [ "N", "E", "S", "W" ];
+  get direction() {
+    return this._directions[this._direction_index];
+  }
 
-  this._direction_index = 0;
-
-  this.direction = this._directions[this._direction_index];
-  
-  this.location = {
-    x: 0,
-    y: 0
-  };
-
-  this.turnLeft = () => {
-
-    if (this.direction_index === 0) {
-      this.direction_index = 3;
+  turnLeft() {
+    if (this._direction_index === 0) {
+      this._direction_index = 3;
     } else {
-      this.direction_index--;
+      this._direction_index--;
     }
   
-    console.log(`Rover #${this.number} turned left. Now facing ${this.directions[this.direction_index]}`);
-  };
+    console.log(`${this.name} turned left. Now facing ${this.direction}`);
+  }
 
-  this.turnRight = () => {
-
-    if (this.direction_index === 3) {
-      this.direction_index = 0;
+  turnRight() {
+    if (this._direction_index === 3) {
+      this._direction_index = 0;
     } else {
-      this.direction_index++;
+      this._direction_index++;
     }
   
-    console.log(`Rover #${this.number} turned right. Now facing ${this.directions[this.direction_index]}`);
-  };
+    console.log(`${this.name} turned right. Now facing ${this.direction}`);
+  }
 
-  this._scan = (location) => {
+  _scan(location) {
     try {
     
       return environment.validate(location);
@@ -120,20 +144,25 @@ function Rover(environment) {
     } catch (err) { console.error(err); }
 
     return false;
-  };
+  }
+   
+  _moveTo(new_location) {
 
-  this._moveTo = (new_location) => {
     if (this._scan(new_location)) {
+      this.travelog.push({...this.location});
+      
       this.location = {...new_location};
+      
       console.log(`${this.name} moving to x:${this.location.x}, y: ${this.location.y}`);
+    
       return true;
     };
     
     console.error('cannot execute move');
     return false;
-  };
+  }
 
-  this.moveForward = () => {
+  moveForward() {
     const new_location = {...this.location};
 
     switch(this.direction) {
@@ -152,9 +181,9 @@ function Rover(environment) {
     }
 
     return this._moveTo(new_location);
-  };
+  }
 
-  this.moveBackwards = () => {
+  moveBackwards() {
     const new_location = {...this.location};
 
     switch(this.direction) {
@@ -173,6 +202,33 @@ function Rover(environment) {
     }
 
     return this._moveTo(new_location);
-  };
+  }
+
+  run(command) {
+    let list = command;
+
+    while(!!list.length) {
+      switch(list[0]) {
+        case "l":
+          this.turnLeft();
+          break;
+        case "f":
+          this.moveForward();
+          break;
+        case "r":
+          this.turnRight();
+          break;
+        case "b":
+          this.moveBackwards();
+          break;
+        default:
+          console.error(`${list[0]} is not a valid command letter`);
+      }
+      list = list.substr(1);
+    }
+
+    console.log(this.travelog);
+  }
 };
-// ======================
+
+let rover = new Rover();
