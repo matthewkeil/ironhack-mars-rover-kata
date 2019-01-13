@@ -1,28 +1,26 @@
 const environment = {
+  rovers: [],
+  obstacles: [],
   size: {
     x: 10,
     y: 10
   },
-  rovers: [],
-  obstacles: [],
   isOccupied: (location) => {
-    let objects = [...environment.rovers, ...environment.obstacles];
+    const { x, y } = location;
 
+    let objects = [...environment.rovers, ...environment.obstacles];
+    
     let [occupant] = objects.filter((val, index) => {
-      if (location.x === val.x && location.y === val.y) {
+      if (x === val.location.x && y === val.location.y) {
         return objects[index];
       }
     });
-
+    
     return occupant;
   },
-  validate: (location) => {
-    if (!location) {
-      throw new Error('must pass location to be validated');
-    }
-
+  scan: (location) => {
     const { x, y } = location;
-
+    
     if (x < 0 || x > (environment.size.x - 1)) {
       throw new Error('x coordinate is out of bounds');
     }
@@ -37,31 +35,41 @@ const environment = {
       throw new Error(`that location is occupied by ${occupant.name}`);
     }
 
-    return true;
+    return;
   },
-  landRover: (rover) => {
+  land: (rover) => {
     if (!(rover instanceof Rover)) {
       throw new Error('we only handle Rover landings!!!');
     }
     
-    environment.validate(rover);
+    environment.scan(rover.location);
     
     return environment.rovers.push(rover);
   },
-  addObstacle: (object) => {
-    if (!object) {
-      throw Error('What are ya adding...');
-    }
-
-    if (!(!!object.location && !!object.location.x && !!object.location.y)) {
-      throw new Error('objects must have a valid location property')
-    }
-
-    environment.validate(object);
+  getLocation: () => ({
+      x: Math.floor(Math.random() * environment.size.x),
+      y: Math.floor(Math.random() * environment.size.y)
+  }),
+  addObstacle: () => {
     
-    environment.obstacles.push(object);
-    
-    console.log(`Obstacle added at x: ${object.location.x}, y: ${object.location.y}`);   
+    const obstacle = {
+      location: environment.getLocation(),
+      name: `an obstacle`
+    };
+
+    let placed = false;
+
+    do {
+      try {
+        environment.scan(obstacle.location);
+        environment.obstacles.push(obstacle)
+        placed = true;
+      } catch (err) {
+        obstacle.location = environment.getLocation();   
+      }
+    } while (!placed)
+
+    console.log(`Obstacle added at x: ${obstacle.location.x}, y: ${obstacle.location.y}`);
   }
 };
 
@@ -71,9 +79,14 @@ const environment = {
  */
 class Rover {
 
-  constructor() {
-    this._directions = [ "N", "E", "S", "W" ];
+  constructor(environment) {
 
+    if (!environment) {
+      throw new Error('No environment detected.  Wipe off the sensors, silly!!');
+    }
+
+    this._directions = [ "N", "E", "S", "W" ];
+    
     this._direction_index = 0;
     
     this.location = {
@@ -82,30 +95,30 @@ class Rover {
     };
     
     this.travelog = [];
+    
+    this.attemptLanding(environment);
+  }
 
-    if (!environment) {
-      throw new Error('No environment detected.  Wipe off the sensors, silly!!');
-    }
-  
+  attemptLanding(environment) {
+
+    const self = this;
+
     do {
       try {
-        this._number = environment.landRover(this);
+        self._number = environment.land(self);
         
-        console.log(`landing zone detected!!\n${this.name} initiating decent sequence\nspooky... ${this.name} facing ${this.direction}\nlocated at x: ${this.location.x}, y: ${this.location.y}`);
+        console.log(`landing zone detected!!\n${this.name} initiating decent sequence\nspooky...\n${this.name} facing ${this.direction}\nlocated at x: ${this.location.x}, y: ${this.location.y}`);
         
       } catch (err) {
-        console.error('An error was detected when attempting to land...\n trying another set of coordinates\n', err);
+        console.warn(`an error was detected when attempting to land...`);
+        console.error(`>>>\n>>> ${err.message}\n>>>`);
+        console.warn(`trying another set of coordinates\n`);
 
-        this.location = {
-          x: Math.floor(Math.random() * environment.size.x),
-          y: Math.floor(Math.random() * environment.size.y)
-        }
+        self.location = environment.getLocation();
 
-        continue;
+        console.warn(`new landing zone will be at\n x: ${self.location.x}, y: ${self.location.y}`);
       }
-
-    } while (false);
-
+    } while (!self._number)
   }
 
   get name() {
@@ -139,7 +152,7 @@ class Rover {
   _scan(location) {
     try {
     
-      return environment.validate(location);
+      return environment.scan(location);
     
     } catch (err) { console.error(err); }
 
@@ -231,4 +244,4 @@ class Rover {
   }
 };
 
-let rover = new Rover();
+let rover = new Rover(environment);
