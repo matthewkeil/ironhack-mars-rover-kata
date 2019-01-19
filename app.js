@@ -35,7 +35,7 @@ const environment = {
       throw new Error(`that location is occupied by ${occupant.name}`);
     }
 
-    return;
+    return true;
   },
   land: (rover) => {
     if (!(rover instanceof Rover)) {
@@ -79,54 +79,32 @@ const environment = {
  */
 class Rover {
 
-  constructor(environment) {
-
-    if (!environment) {
-      throw new Error('No environment detected.  Wipe off the sensors, silly!!');
-    }
-
-    this._directions = [ "N", "E", "S", "W" ];
-    
-    this._direction_index = 0;
-    
-    this.location = {
-      x: 0,
-      y: 0
-    };
-    
-    this.travelog = [];
-    
-    this.attemptLanding(environment);
-  }
-
-  attemptLanding(environment) {
-
-    const self = this;
-
-    do {
-      try {
-        self._number = environment.land(self);
-        
-        console.log(`landing zone detected!!\n${this.name} initiating decent sequence\nspooky...\n${this.name} facing ${this.direction}\nlocated at x: ${this.location.x}, y: ${this.location.y}`);
-        
-      } catch (err) {
-        console.warn(`an error was detected when attempting to land...`);
-        console.error(`>>>\n>>> ${err.message}\n>>>`);
-        console.warn(`trying another set of coordinates\n`);
-
-        self.location = environment.getLocation();
-
-        console.warn(`new landing zone will be at\n x: ${self.location.x}, y: ${self.location.y}`);
-      }
-    } while (!self._number)
-  }
-
   get name() {
     return `Rover #${this._number}`;
   }
 
   get direction() {
     return this._directions[this._direction_index];
+  }
+
+  constructor(environment) {
+
+    if (!environment) {
+      throw new Error('No environment detected.  Wipe off the sensors, silly!!');
+    }
+
+    this.location = {
+      x: 0,
+      y: 0
+    };
+
+    this._directions = [ "N", "E", "S", "W" ];
+    
+    this._direction_index = 0;
+    
+    this._travelog = [];
+    
+    this._attemptLanding(environment);
   }
 
   turnLeft() {
@@ -147,32 +125,6 @@ class Rover {
     }
   
     console.log(`${this.name} turned right. Now facing ${this.direction}`);
-  }
-
-  _scan(location) {
-    try {
-    
-      return environment.scan(location);
-    
-    } catch (err) { console.error(err); }
-
-    return false;
-  }
-   
-  _moveTo(new_location) {
-
-    if (this._scan(new_location)) {
-      this.travelog.push({...this.location});
-      
-      this.location = {...new_location};
-      
-      console.log(`${this.name} moving to x:${this.location.x}, y: ${this.location.y}`);
-    
-      return true;
-    };
-    
-    console.error('cannot execute move');
-    return false;
   }
 
   moveForward() {
@@ -218,9 +170,11 @@ class Rover {
   }
 
   run(command) {
+
     let list = command;
 
     while(!!list.length) {
+      
       switch(list[0]) {
         case "l":
           this.turnLeft();
@@ -237,10 +191,59 @@ class Rover {
         default:
           console.error(`${list[0]} is not a valid command letter`);
       }
+
       list = list.substr(1);
     }
 
-    console.log(this.travelog);
+    console.log(this._travelog);
+  }
+
+  _attemptLanding(environment) {
+
+    const self = this;
+
+    do {
+      try {
+        self._number = environment.land(self);
+        
+        console.log(`landing zone detected!!\n${this.name} initiating decent sequence\nspooky...\n${this.name} facing ${this.direction}\nlocated at x: ${this.location.x}, y: ${this.location.y}`);
+        
+      } catch (err) {
+        console.warn(`an error was detected when attempting to land...`);
+        console.error(`>>>\n>>> ${err.message}\n>>>`);
+        console.warn(`trying another set of coordinates\n`);
+
+        self.location = environment.getLocation();
+
+        console.warn(`new landing zone will be at\n x: ${self.location.x}, y: ${self.location.y}`);
+      }
+    } while (!self._number)
+  }
+
+  _scan(location) {
+    try {
+    
+      return environment.scan(location);
+    
+    } catch (err) { console.error(err); }
+
+    return false;
+  }
+   
+  _moveTo(new_location) {
+
+    if (this._scan(new_location)) {
+      this._travelog.push({...this.location});
+      
+      this.location = {...new_location};
+      
+      console.log(`${this.name} moving to x:${this.location.x}, y: ${this.location.y}`);
+    
+      return true;
+    };
+    
+    console.error('cannot execute move');
+    return false;
   }
 };
 
